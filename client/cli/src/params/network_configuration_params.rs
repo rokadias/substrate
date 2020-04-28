@@ -45,12 +45,20 @@ pub struct NetworkConfigurationParams {
 	pub reserved_only: bool,
 
 	/// Specify a list of sentry node public addresses.
+	///
+	/// Can't be used with --public-addr as the sentry node would take precedence over the public address
+	/// specified there.
 	#[structopt(
 		long = "sentry-nodes",
 		value_name = "URL",
-		conflicts_with_all = &[ "sentry" ]
+		conflicts_with_all = &[ "sentry", "public-addr" ]
 	)]
 	pub sentry_nodes: Vec<String>,
+
+	/// The public address that other nodes will use to connect to it.
+	/// This can be used if there's a proxy in front of this node.
+	#[structopt(long = "public-addr", value_name = "PUBLIC_ADDR")]
+	pub public_addr: Vec<String>,
 
 	/// Listen on this multiaddress.
 	#[structopt(long = "listen-addr", value_name = "LISTEN_ADDR")]
@@ -118,6 +126,11 @@ impl NetworkConfigurationParams {
 		}
 
 		config.network.sentry_nodes.extend(self.sentry_nodes.clone());
+
+		for addr in self.public_addr.iter() {
+			let addr = addr.parse().ok().ok_or(error::Error::InvalidListenMultiaddress)?;
+			config.network.public_addresses.push(addr);
+		}
 
 		for addr in self.listen_addr.iter() {
 			let addr = addr.parse().ok().ok_or(error::Error::InvalidListenMultiaddress)?;
